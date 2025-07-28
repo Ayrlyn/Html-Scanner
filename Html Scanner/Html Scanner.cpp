@@ -2,12 +2,29 @@
 // It checks if these files contain any of a predefined list of keywords.
 // The output is a text file that lists the matching filenames, grouped by the keyword they contained.
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
+
+
+void PrintUsage(const char* programName) {
+    std::cerr << "Usage: " << programName << " <directory_to_scan> <keyword1> [keyword2] [keyword3] ..." << std::endl;
+    std::cerr << "Example: " << programName << " \"C:\\MyWebsite\" form gallery table" << std::endl;
+    std::cerr << "An optional output file can be specified with the /o flag." << std::endl;
+    std::cerr << "Example with output file: " << programName << " \"C:\\MyWebsite\" /o \"results.txt\" form gallery" << std::endl;
+}
+
+// Helper function to convert a string to lowercase
+std::string ToLower(std::string str) {
+    std::transform(str.begin(), str.end(), str.begin(),
+        [](unsigned char c) { return std::tolower(c); });
+    return str;
+}
 
 int main(int argCount, char* argValues[])
 {
@@ -66,6 +83,13 @@ int main(int argCount, char* argValues[])
         return 1;
     }
 
+    // [DEBUG] Print the parsed arguments to verify them
+    std::cout << "[DEBUG] Directory to scan: " << scanDirectory.string() << std::endl;
+    std::cout << "[DEBUG] Output file: " << outputFileName << std::endl;
+    std::cout << "[DEBUG] Keywords to find: ";
+    for (const auto& k : keywords) { std::cout << "\"" << k << "\" "; }
+    std::cout << std::endl << "--------------------------------" << std::endl;
+
 
     // Use a map to store a list of filenames for each keyword.
     std::map<std::string, std::vector<std::string>> foundFilesByKeyword;
@@ -84,6 +108,9 @@ int main(int argCount, char* argValues[])
             // Check if the entry is a regular file with a .html or .htm extension.
             if (entry.is_regular_file() && (entry.path().extension() == ".html" || entry.path().extension() == ".htm")) {
 
+                // [DEBUG] Print every HTML file that is being opened for scanning
+                std::cout << "[DEBUG] Scanning file: " << entry.path().string() << std::endl;
+
                 std::ifstream fileStream(entry.path());
                 if (!fileStream.is_open()) {
                     std::cerr << "Warning: Could not open file: " << entry.path().string() << std::endl;
@@ -95,7 +122,7 @@ int main(int argCount, char* argValues[])
                 std::set<std::string> keywordsFoundInFile;
                 while (std::getline(fileStream, line)) {
                     for (const auto& keyword : keywords) {
-                        if (line.find(keyword) != std::string::npos) {
+                        if (ToLower(line).find(ToLower(keyword)) != std::string::npos) {
                             keywordsFoundInFile.insert(keyword);
                         }
                     }
@@ -147,12 +174,4 @@ int main(int argCount, char* argValues[])
     std::cout << "\nScan complete. Results saved to " << outputFileName << std::endl;
 
     return 0;
-}
-
-
-void PrintUsage(const char* programName) {
-	std::cerr << "Usage: " << programName << " <directory_to_scan> <keyword1> [keyword2] [keyword3] ..." << std::endl;
-	std::cerr << "Example: " << programName << " \"C:\\MyWebsite\" form gallery table" << std::endl;
-	std::cerr << "An optional output file can be specified with the /o flag." << std::endl;
-	std::cerr << "Example with output file: " << programName << " \"C:\\MyWebsite\" /o \"results.txt\" form gallery" << std::endl;
 }
